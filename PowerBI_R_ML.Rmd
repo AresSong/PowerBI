@@ -1,0 +1,62 @@
+---
+title: "PowerBI_R_ML"
+author: "Song Han"
+date: "2016Äê8ÔÂ26ÈÕ"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+install.packages("fpc")
+install.packages("XML")
+install.packages("RCurl")
+install.packages("stringr")
+library(fpc)
+library(XML)
+library(RCurl)
+library(stringr)
+#
+factorToNumeric <- function(f) as.integer(levels(f))[as.integer(f)]
+#============ block 1 =============
+#
+dataurl <- "http://www.bankrate.com/finance/retirement/best-places-retire-how-state-ranks.aspx"
+stateurl <- "https://en.wikipedia.org/wiki/List_of_U.S._state_abbreviations"
+#
+
+#============ block 2 =============
+# 
+doc <- htmlParse(dataurl)
+ndx <- getNodeSet(doc, "//table")
+retstat <- readHTMLTable(ndx[[1]])
+str_replace_all(retstat$'Health care quality',"(tie)", "")
+str_replace_all(retstat$'Health care quality',"[(tied)]", "")
+retstat$'Health care quality'
+retstat$'Health care quality' <- as.factor(str_replace_all(retstat$'Health care quality',"[(tied)]", ""))
+
+statecodes <- readHTMLTable(getURL(stateurl))[[1]]
+statecodes_1 <- statecodes[-c(1:2,11,54:79), -c(2,3,5:10)]
+colnames(statecodes_1) <- c("State", "State Code")
+dataset <- merge(retstat,statecodes_1,by = "State")[,-c(1:2)]
+dataset <- dataset[,c(7,1,2,3,4,5,6)]
+colnames(dataset) <- c("State","Living Cost","Crime Rate","Well-being","Health-care Quality","Tax","Weather")
+cols = c(2:7)
+dataset[,cols] <- lapply(dataset[, cols], factorToNumeric)
+fpc <- pamk(dataset[,-1])
+dataset$Clusters <- as.factor(fpc$pamobject$clustering)
+dataset <- dataset[,c(8,1,2,3,4,5,6,7)]
+dataset <- dataset[order(dataset$Cluster,dataset$State),]
+medoids <- as.data.frame(fpc$pamobject$medoids)
+medoids$Cluster <- 1:nrow(medoids)
+medoids <- medoids[,c(7,1,2,3,4,5,6)]
+# 
+rm(retstat,statecodes)
+```
